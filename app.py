@@ -12,6 +12,18 @@ from playlist_logic import (
     search_songs,
 )
 
+# Shared list of genres offered in both the profile and add-song dropdowns.
+# Keeping this in one place ensures the "favorite genre" and "song genre"
+# selectors always stay in sync.
+GENRE_OPTIONS = ["rock", "lofi", "pop", "jazz", "electronic", "ambient", "other"]
+
+
+def format_song_label(song: Song) -> str:
+    """Human-readable 'Title by Artist' label for a song."""
+    title = song.get("title", "?")
+    artist = song.get("artist", "?")
+    return f"{title} by {artist}"
+
 
 def init_state():
     """Initialize Streamlit session state."""
@@ -212,7 +224,7 @@ def profile_sidebar():
 
     profile["favorite_genre"] = st.sidebar.selectbox(
         "Favorite genre",
-        options=["rock", "lofi", "pop", "jazz", "electronic", "ambient", "other"],
+        options=GENRE_OPTIONS,
         index=0,
     )
 
@@ -232,7 +244,7 @@ def add_song_sidebar():
     artist = st.sidebar.text_input("Artist")
     genre = st.sidebar.selectbox(
         "Genre",
-        options=["rock", "lofi", "pop", "jazz", "electronic", "ambient", "other"],
+        options=GENRE_OPTIONS,
     )
     energy = st.sidebar.slider("Energy", min_value=1, max_value=10, value=5)
     tags_text = st.sidebar.text_input("Tags (comma separated)")
@@ -286,6 +298,8 @@ def render_playlist(label, songs):
     for song in filtered:
         mood = song.get("mood", "?")
         tags = ", ".join(song.get("tags", []))
+        # Only the title is bold here, so this view formats the label
+        # inline rather than using format_song_label (which bolds nothing).
         st.write(
             f"- **{song['title']}** by {song['artist']} "
             f"(genre {song['genre']}, energy {song['energy']}, mood {mood}) "
@@ -310,7 +324,7 @@ def lucky_section(playlists):
             return
 
         st.success(
-            f"Lucky song: {pick['title']} by {pick['artist']} "
+            f"Lucky song: {format_song_label(pick)} "
             f"(mood {pick.get('mood', '?')})"
         )
 
@@ -361,7 +375,7 @@ def history_section():
     if show_details:
         for song in history:
             st.write(
-                f"{song.get('mood', '?')}: {song['title']} by {song['artist']}"
+                f"{song.get('mood', '?')}: {format_song_label(song)}"
             )
 
 
