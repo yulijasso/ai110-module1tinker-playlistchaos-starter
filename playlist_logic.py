@@ -70,14 +70,33 @@ def classify_song(song: Song, profile: Dict[str, object]) -> str:
     hype_keywords = ["rock", "punk", "party"]
     chill_keywords = ["lofi", "ambient", "sleep"]
 
+    title_lower = title.lower()
     is_hype_keyword = any(k in genre for k in hype_keywords)
-    is_chill_keyword = any(k in title for k in chill_keywords)
+    is_chill_keyword = any(k in title_lower for k in chill_keywords)
 
-    if genre == favorite_genre or energy >= hype_min_energy or is_hype_keyword:
-        return "Hype"
+    # Chill-first: an explicit chill signal (low energy or chill keyword)
+    # wins ties over hype signals, so favorite_genre cannot force a
+    # low-energy song into Hype.
     if energy <= chill_max_energy or is_chill_keyword:
         return "Chill"
+    if genre == favorite_genre or energy >= hype_min_energy or is_hype_keyword:
+        return "Hype"
     return "Mixed"
+
+    # --- Alternative: Hype hard-rules first (Hype wins ties) ---
+    # # Hard rules: explicit energy thresholds and keyword matches.
+    # is_hype = energy >= hype_min_energy or is_hype_keyword
+    # is_chill = energy <= chill_max_energy or is_chill_keyword
+    #
+    # if is_hype:
+    #     return "Hype"
+    # if is_chill:
+    #     return "Chill"
+    # # favorite_genre is a soft signal: only used as a tiebreaker so it
+    # # cannot override a low-energy song that already qualifies as Chill.
+    # if genre == favorite_genre:
+    #     return "Hype"
+    # return "Mixed"
 
 
 def build_playlists(songs: List[Song], profile: Dict[str, object]) -> PlaylistMap:
@@ -116,12 +135,12 @@ def compute_playlist_stats(playlists: PlaylistMap) -> Dict[str, object]:
     chill = playlists.get("Chill", [])
     mixed = playlists.get("Mixed", [])
 
-    total = len(hype)
+    total = len(all_songs)
     hype_ratio = len(hype) / total if total > 0 else 0.0
 
     avg_energy = 0.0
     if all_songs:
-        total_energy = sum(song.get("energy", 0) for song in hype)
+        total_energy = sum(song.get("energy", 0) for song in all_songs)
         avg_energy = total_energy / len(all_songs)
 
     top_artist, top_count = most_common_artist(all_songs)
@@ -168,7 +187,7 @@ def search_songs(
 
     for song in songs:
         value = str(song.get(field, "")).lower()
-        if value and value in q:
+        if value and q in value:
             filtered.append(song)
 
     return filtered
@@ -193,6 +212,8 @@ def random_choice_or_none(songs: List[Song]) -> Optional[Song]:
     """Return a random song or None."""
     import random
 
+    if not songs:
+        return None
     return random.choice(songs)
 
 
